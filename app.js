@@ -43,6 +43,67 @@ const ROUTINE = [
   ["21:30","Última salida de pis"]
 ];
 
+const HOUSETRAINING = [
+  ["Elegí el lugar ya", "Antes de que llegue, decidí el punto exacto afuera (un rincón del patio, una maceta con pasto sintético). No lo cambies las primeras semanas."],
+  ["Llevala siempre cargada al principio", "Hasta que tenga el recorrido aprendido, cargala hasta el lugar — si camina sola por la casa, va a marcar en el camino."],
+  ["Quedate 2-3 minutos ahí", "No la dejes sola ahí afuera. Quedate parado, sin jugar, hasta que haga. Si en 3 min no hizo, volvé adentro y reintentá en 15 min."],
+  ["Premiá en los primeros 5 segundos", "Apenas termina de hacer pis en el lugar correcto: premio + '¡muy bien!' con voz alegre. El timing es lo que más importa, no el premio en sí."],
+  ["Accidente adentro: ignoralo", "Nunca la regañes ni le muestres el charco. Limpiá con un limpiador enzimático (no amoníaco) para que no quede olor — si queda olor, va a volver a marcar ahí."],
+  ["Vigilancia o jaula chica", "Cuando no la podés mirar fijo, dejala en un espacio reducido (corralito) con su cama. Los cachorros no ensucian donde duermen si el espacio es justo."]
+];
+
+const POTTY_SCHEDULE = [
+  ["Apenas despierta", "Sacarla antes de que camine por la casa"],
+  ["15-20 min después de comer", "Siempre, sin excepción — comer activa el intestino"],
+  ["Después de cada siesta", "Aunque haya dormido 20 minutos"],
+  ["Después de jugar fuerte", "La actividad también activa las ganas de hacer pis"],
+  ["Cada 2 horas (8-12 semanas)", "Aunque parezca que no tiene ganas"],
+  ["Antes de dormir a la noche", "Última salida, sin agua después de esa hora"]
+];
+
+const PLAY = [
+  ["8-12 semanas", "Juego libre en casa, explorar texturas, juguetes blandos. Nada de correa larga ni escaleras."],
+  ["3-6 meses", "Paseos cortos con correa (5 min x mes de edad), juego con otros cachorros vacunados"],
+  ["6-12 meses", "Paseos un poco más largos, empezar a frenar el exceso de energía con juegos mentales (snuffle mat, buscar premios)"],
+  ["+12 meses", "Ya cerró el crecimiento óseo: paseos normales, juegos de pelota, agility liviano si le gusta"]
+];
+
+const TRAINING = [
+  ["Sesiones de 5 minutos, varias veces al día", "Mejor 4 sesiones de 5 min que una de 20 — pierde atención rápido"],
+  ["Premio en trocitos chicos", "Del tamaño de una lenteja, así no se llena y podés repetir muchas veces"],
+  ["Orden sugerido de comandos", "1) Su nombre (mirarte cuando lo llamás) 2) Sentado 3) Quieto 4) Venir 5) Caminar sin tirar de la correa"],
+  ["Marcá el momento exacto", "Decí 'sí' o usá clicker justo cuando hace lo correcto, antes de darle el premio"],
+  ["Terminá siempre bien", "Cortá la sesión mientras todavía le interesa, nunca cuando ya está aburrida o cansada"],
+  ["Repetición en contextos distintos", "Practicá 'sentado' en la cocina, el patio, la calle — si no, solo va a obedecer en un lugar"]
+];
+
+const SOCIAL = [
+  "Gente distinta (chicos, adultos, con gorra, con bastón)",
+  "Otros perros ya vacunados y de buen trato",
+  "Sonidos de casa: aspiradora, timbre, secador de pelo",
+  "Subirla en auto en viajes cortos y tranquilos",
+  "Caminar sobre superficies distintas (pasto, cerámica, alfombra, metal)",
+  "Manipulación de patas, orejas y boca (para cuando haya que bañarla o ir al veterinario)"
+];
+
+const AVOID = [
+  "Nunca pegarle, gritarle ni restregarle la nariz en el accidente",
+  "No dejarla sola muchas horas seguidas — el toy poodle es propenso a ansiedad por separación",
+  "No forzarla a bajar de upa ni a subir/bajar escalones saltando antes del año",
+  "No premiar con comida humana ni en exceso, se desordena el apetito",
+  "No despertarla bruscamente ni sorprenderla mientras duerme",
+  "No exponerla a frío o calor extremo — el toy se descompensa más rápido que una raza grande"
+];
+
+const VET_SIGNS = [
+  "Vómitos o diarrea que duran más de 24hs",
+  "No come ni toma agua por más de 12hs",
+  "Letargo extremo, no responde a estímulos",
+  "Encías muy pálidas o temblores fuertes (hipoglucemia, común en toy)",
+  "Dificultad para respirar o tos persistente",
+  "Cualquier golpe o caída desde altura, aunque parezca estar bien"
+];
+
 const store = {
   get(key, fallback) {
     try {
@@ -143,6 +204,11 @@ function logFeed() {
   showToast('Comida registrada a las ' + time);
 }
 
+function renderInfoList(containerId, items) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = items.map(item => `<div class="checklist-item"><span>${item}</span></div>`).join('');
+}
+
 function renderNextSteps() {
   const shopping = store.get('shopping-checked', new Array(SHOPPING.length).fill(false));
   const space = store.get('space-checked', new Array(SPACE.length).fill(false));
@@ -167,6 +233,7 @@ function setupTabs() {
     compras: ['Compras y casa', 'Todo lo que necesitás antes de que llegue'],
     alimentacion: ['Alimentación', 'Plan de comidas por edad'],
     salud: ['Salud', 'Vacunas, desparasitación y rutina'],
+    crianza: ['Crianza', 'Pis afuera, juego, entrenamiento y socialización'],
     automatizacion: ['Automatización', 'Dispositivos conectados a la casa']
   };
   buttons.forEach(btn => {
@@ -208,6 +275,13 @@ function init() {
   renderTable('feeding-table', FEEDING, true);
   renderTable('vaccine-table', VACCINES, false);
   renderTable('routine-table', ROUTINE, false);
+  renderTable('housetraining-table', HOUSETRAINING, false);
+  renderTable('potty-schedule-table', POTTY_SCHEDULE, false);
+  renderTable('play-table', PLAY, false);
+  renderTable('training-table', TRAINING, false);
+  renderInfoList('list-social', SOCIAL);
+  renderInfoList('list-avoid', AVOID);
+  renderInfoList('list-vet', VET_SIGNS);
   document.getElementById('stat-vaccine').textContent = VACCINES[0][0];
   renderFeedLog();
   renderNextSteps();

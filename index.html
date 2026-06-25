@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Mi Caniche</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#6B4F3B" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div>
+      <h1 id="page-title">Mi Caniche</h1>
+      <div class="sub" id="page-sub">Preparando todo para su llegada</div>
+    </div>
+  </header>
+
+  <main>
+
+    <section id="view-inicio" class="view active">
+      <div class="card countdown-card">
+        <div class="num" id="countdown-num">--</div>
+        <div class="label" id="countdown-label">elegí la fecha de llegada</div>
+        <input type="date" id="arrival-date" />
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="num" id="stat-shopping">0/0</div><div class="lbl">Compras</div></div>
+        <div class="stat"><div class="num" id="stat-space">0/0</div><div class="lbl">Casa lista</div></div>
+        <div class="stat"><div class="num" id="stat-vaccine">--</div><div class="lbl">Próx. vacuna</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Qué sigue</h2>
+        <p class="empty-note" id="next-steps">Cargando…</p>
+      </div>
+    </section>
+
+    <section id="view-compras" class="view">
+      <div class="card">
+        <h2>Lista de compras</h2>
+        <div id="list-shopping"></div>
+      </div>
+      <div class="card">
+        <h2>Preparar la casa</h2>
+        <div id="list-space"></div>
+      </div>
+    </section>
+
+    <section id="view-alimentacion" class="view">
+      <div class="card">
+        <h2>Plan de alimentación (raza toy)</h2>
+        <table class="info-table" id="feeding-table"></table>
+      </div>
+      <div class="card">
+        <h2>Registro de comidas de hoy</h2>
+        <div id="feed-log"></div>
+        <button class="btn" id="btn-log-feed">Registrar comida ahora</button>
+      </div>
+    </section>
+
+    <section id="view-salud" class="view">
+      <div class="card">
+        <h2>Vacunas y desparasitación</h2>
+        <table class="info-table" id="vaccine-table"></table>
+      </div>
+      <div class="card">
+        <h2>Rutina diaria sugerida</h2>
+        <table class="info-table" id="routine-table"></table>
+      </div>
+    </section>
+
+    <section id="view-automatizacion" class="view">
+      <div class="card">
+        <h2>Dispositivos</h2>
+        <div id="device-list">
+          <div class="device-row">
+            <div>
+              <div class="name">Dispensador de comida</div>
+              <div class="desc">ESP32 + servo · no conectado</div>
+            </div>
+            <span class="pill warn">Sin configurar</span>
+          </div>
+          <div class="device-row">
+            <div>
+              <div class="name">Bebedero a flotador</div>
+              <div class="desc">Sin electrónica, recarga manual</div>
+            </div>
+            <span class="pill">Pasivo</span>
+          </div>
+          <div class="device-row">
+            <div>
+              <div class="name">Cámara / sensor de movimiento</div>
+              <div class="desc">Próximamente</div>
+            </div>
+            <span class="pill warn">No instalado</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Cómo se va a conectar</h2>
+        <p class="empty-note">
+          Cuando armes el ESP32, esta pantalla se va a conectar a la red local de tu casa (o a un broker como Adafruit IO / HiveMQ) para mandar comandos: "dispensar ahora" y horarios automáticos. Por ahora queda lista la estructura — cuando tengas el hardware armado, lo conectamos en una sesión aparte.
+        </p>
+        <button class="btn secondary" disabled>Conectar dispensador (próximamente)</button>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button data-view="inicio" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Inicio
+    </button>
+    <button data-view="compras">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Compras
+    </button>
+    <button data-view="alimentacion">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 100 6 3 3 0 000-6zM5 9a2 2 0 100 4 2 2 0 000-4zM19 9a2 2 0 100 4 2 2 0 000-4zM7 16a2 2 0 100 4 2 2 0 000-4zM17 16a2 2 0 100 4 2 2 0 000-4z"/></svg>
+      Comida
+    </button>
+    <button data-view="salud">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Salud
+    </button>
+    <button data-view="automatizacion">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Automation
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

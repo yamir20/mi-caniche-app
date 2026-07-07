@@ -194,7 +194,19 @@
 
     <!-- ===== SALUD ===== -->
     <section id="view-salud" class="view">
-      <div class="card"><h2>Vacunas y desparasitación</h2><table class="info-table" id="vaccine-table"></table></div>
+      <div class="card">
+        <h2>Fecha de nacimiento</h2>
+        <p class="empty-note" style="margin-bottom:8px;">Ingresá la fecha de nacimiento para calcular automáticamente todas las fechas de vacunas.</p>
+        <input type="date" id="birth-date" style="width:100%;padding:10px;border:1px solid var(--cream-deep);border-radius:10px;font-size:15px;font-family:inherit;background:var(--cream);" />
+      </div>
+      <div id="next-vaccine-card" style="display:none;" class="card" style="background:var(--brown);">
+        <h2>Próxima vacuna</h2>
+        <div id="next-vaccine-info"></div>
+      </div>
+      <div class="card">
+        <h2>Calendario completo</h2>
+        <div id="vaccine-calendar"></div>
+      </div>
       <div class="card"><h2>Rutina base sugerida</h2><table class="info-table" id="routine-table"></table></div>
     </section>
 

@@ -216,6 +216,7 @@ const PAGE_TITLES = {
   compras: ['Compras y casa', 'Todo lo que necesitás antes de que llegue'],
   salud: ['Salud', 'Vacunas, desparasitación y rutina'],
   crianza: ['Crianza', 'Pis afuera, juego, entrenamiento y socialización'],
+  fotos: ['Álbum de fotos', 'Todos los momentos de tu cachorra'],
 };
 
 function setupTabs() {
@@ -821,6 +822,428 @@ function init() {
   document.getElementById('stat-pis').textContent = getPisPctToday() + '%';
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+  // fotos y registros
+  setupFotos();
+  setupRegistros();
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ============================================================
+// ÁLBUM DE FOTOS — IndexedDB
+// ============================================================
+const DB_NAME = 'miCanicheDB';
+const DB_VERSION = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (db) { resolve(db); return; }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('fotos')) {
+        const store = d.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
+        store.createIndex('fecha', 'fecha', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function savePhoto(dataUrl, caption) {
+  const d = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('fotos', 'readwrite');
+    tx.objectStore('fotos').add({ dataUrl, caption, fecha: new Date().toISOString() });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getAllPhotos() {
+  const d = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('fotos', 'readonly');
+    const req = tx.objectStore('fotos').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deletePhoto(id) {
+  const d = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('fotos', 'readwrite');
+    tx.objectStore('fotos').delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Estado temporal para la foto pendiente de guardar
+let pendingPhotoData = null;
+let openModalId = null;
+
+async function renderFotoGrid(filter = 'todas') {
+  const all = await getAllPhotos();
+  const countEl = document.getElementById('foto-count');
+  const gridEl = document.getElementById('foto-grid');
+
+  let filtered = [...all].reverse();
+  const now = new Date();
+  if (filter === 'esta-semana') {
+    const cutoff = new Date(now); cutoff.setDate(now.getDate() - 7);
+    filtered = filtered.filter(f => new Date(f.fecha) >= cutoff);
+  } else if (filter === 'este-mes') {
+    const cutoff = new Date(now); cutoff.setDate(now.getDate() - 30);
+    filtered = filtered.filter(f => new Date(f.fecha) >= cutoff);
+  }
+
+  countEl.textContent = `(${all.length})`;
+
+  if (!filtered.length) {
+    gridEl.innerHTML = `<div style="text-align:center;padding:30px 0;">
+      <div style="font-size:40px;margin-bottom:8px;">📷</div>
+      <p class="empty-note">Todavía sin fotos. ¡Sacale la primera foto a tu cachorra!</p>
+    </div>`;
+    return;
+  }
+
+  gridEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+    ${filtered.map(f => `
+      <div class="foto-thumb" data-id="${f.id}" style="position:relative;aspect-ratio:1;overflow:hidden;border-radius:8px;cursor:pointer;">
+        <img src="${f.dataUrl}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+        ${f.caption ? `<div style="position:absolute;bottom:0;left:0;right:0;padding:3px 5px;background:linear-gradient(transparent,rgba(0,0,0,0.55));color:#fff;font-size:9px;line-height:1.3;word-break:break-word;">${f.caption}</div>` : ''}
+      </div>
+    `).join('')}
+  </div>`;
+
+  gridEl.querySelectorAll('.foto-thumb').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = parseInt(el.dataset.id);
+      const foto = filtered.find(f => f.id === id);
+      if (!foto) return;
+      openModalId = id;
+      document.getElementById('modal-img').src = foto.dataUrl;
+      document.getElementById('modal-caption').textContent = foto.caption || '';
+      document.getElementById('modal-date').textContent = new Date(foto.fecha).toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      const modal = document.getElementById('foto-modal');
+      modal.style.display = 'flex';
+    });
+  });
+}
+
+function fileToDataUrl(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFileInput(file) {
+  if (!file) return;
+  const dataUrl = await fileToDataUrl(file);
+  pendingPhotoData = dataUrl;
+  document.getElementById('foto-preview').src = dataUrl;
+  document.getElementById('foto-caption').value = '';
+  document.getElementById('foto-caption-card').style.display = 'block';
+  document.getElementById('foto-caption-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function setupFotos() {
+  document.getElementById('input-camera').addEventListener('change', e => handleFileInput(e.target.files[0]));
+  document.getElementById('input-gallery').addEventListener('change', async e => {
+    const files = Array.from(e.target.files);
+    if (files.length === 1) {
+      handleFileInput(files[0]);
+    } else if (files.length > 1) {
+      // múltiples fotos sin descripción
+      for (const file of files) {
+        const dataUrl = await fileToDataUrl(file);
+        await savePhoto(dataUrl, '');
+      }
+      showToast(`${files.length} fotos guardadas ✅`);
+      renderFotoGrid(document.getElementById('foto-filter').value);
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('btn-foto-save').addEventListener('click', async () => {
+    if (!pendingPhotoData) return;
+    const caption = document.getElementById('foto-caption').value.trim();
+    await savePhoto(pendingPhotoData, caption);
+    pendingPhotoData = null;
+    document.getElementById('foto-caption-card').style.display = 'none';
+    document.getElementById('input-camera').value = '';
+    document.getElementById('input-gallery').value = '';
+    showToast('Foto guardada ✅');
+    renderFotoGrid(document.getElementById('foto-filter').value);
+  });
+
+  document.getElementById('btn-foto-cancel').addEventListener('click', () => {
+    pendingPhotoData = null;
+    document.getElementById('foto-caption-card').style.display = 'none';
+    document.getElementById('input-camera').value = '';
+    document.getElementById('input-gallery').value = '';
+  });
+
+  document.getElementById('foto-filter').addEventListener('change', e => renderFotoGrid(e.target.value));
+
+  // modal
+  document.getElementById('btn-modal-close').addEventListener('click', () => {
+    document.getElementById('foto-modal').style.display = 'none';
+  });
+  document.getElementById('btn-modal-delete').addEventListener('click', async () => {
+    if (openModalId === null) return;
+    await deletePhoto(openModalId);
+    document.getElementById('foto-modal').style.display = 'none';
+    openModalId = null;
+    showToast('Foto eliminada');
+    renderFotoGrid(document.getElementById('foto-filter').value);
+  });
+
+  renderFotoGrid();
+}
+
+// ============================================================
+// REGISTROS / LIBRO DE VIDA
+// ============================================================
+const MILESTONES = [
+  { id: 'llegada',    emoji: '🏠', title: 'El día que llegué',      desc: 'Mi primer día en casa' },
+  { id: 'semana1',   emoji: '🐣', title: 'Primera semana',          desc: 'Conociendo mi nuevo hogar' },
+  { id: 'mes1',      emoji: '📅', title: '1 mes en casa',           desc: '¡Un mes con mi familia!' },
+  { id: 'mes3',      emoji: '📅', title: '3 meses',                 desc: 'Ya estoy creciendo' },
+  { id: 'mes6',      emoji: '🎂', title: '6 meses',                 desc: 'Mitad de mi primer año' },
+  { id: 'anio1',     emoji: '🥳', title: '1 año',                   desc: '¡Feliz primer cumple!' },
+  { id: 'anio2',     emoji: '🎉', title: '2 años',                  desc: 'Ya soy toda una señorita' },
+  { id: 'anio3',     emoji: '⭐', title: '3 años',                  desc: 'Crecí un montón' },
+  { id: 'ojos',      emoji: '👁️', title: 'Mis ojitos',              desc: 'La mirada que lo dice todo' },
+  { id: 'patitas',   emoji: '🐾', title: 'Mis patitas',             desc: 'Tan chiquititas' },
+  { id: 'familia',   emoji: '👨‍👩‍👧', title: 'Mi familia humana',      desc: 'Mis papás y mis personas' },
+  { id: 'casita',    emoji: '🏡', title: 'Mi casita',               desc: 'El lugar donde vivo' },
+  { id: 'cucha',     emoji: '🛏️', title: 'Mi cucha',                desc: 'Mi rincón favorito para dormir' },
+  { id: 'paseos',    emoji: '🌳', title: 'Mis paseos',              desc: 'Explorando el mundo' },
+  { id: 'juegos',    emoji: '🎾', title: 'Jugando',                 desc: 'Mis ratos de diversión' },
+  { id: 'durmiendo', emoji: '💤', title: 'Durmiendo',               desc: 'Mis mejores siestas' },
+  { id: 'banio',     emoji: '🛁', title: 'Baño y peluquería',       desc: 'Limpia y hermosa' },
+  { id: 'accesorios',emoji: '🎀', title: 'Mis accesorios',         desc: 'Collares, ropa y moños' },
+  { id: 'veterinario',emoji:'🏥', title: 'En el veterinario',       desc: 'Cuidando mi salud' },
+  { id: 'amigos',    emoji: '🐶', title: 'Mis amigos perritos',     desc: 'Mis compañeros de juego' },
+  { id: 'primeras',  emoji: '✨', title: 'Mis primeras veces',      desc: 'Primera vez en muchas cosas' },
+  { id: 'navidad',   emoji: '🎄', title: 'Navidades y fiestas',     desc: 'Celebrando con la familia' },
+];
+
+let currentMilestoneId = null;
+let pendingRegPhotoData = null;
+let openModalStore = 'fotos'; // 'fotos' o 'registros'
+
+// DB upgrade para registros
+function openDBv2() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 2);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('fotos')) {
+        d.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!d.objectStoreNames.contains('registros')) {
+        const s = d.createObjectStore('registros', { keyPath: 'id', autoIncrement: true });
+        s.createIndex('milestoneId', 'milestoneId', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveRegistroPhoto(milestoneId, dataUrl, caption) {
+  const d = await openDBv2();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('registros', 'readwrite');
+    tx.objectStore('registros').add({ milestoneId, dataUrl, caption, fecha: new Date().toISOString() });
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getRegistrosByMilestone(milestoneId) {
+  const d = await openDBv2();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('registros', 'readonly');
+    const idx = tx.objectStore('registros').index('milestoneId');
+    const req = idx.getAll(milestoneId);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getAllRegistros() {
+  const d = await openDBv2();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('registros', 'readonly');
+    const req = tx.objectStore('registros').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteRegistroPhoto(id) {
+  const d = await openDBv2();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('registros', 'readwrite');
+    tx.objectStore('registros').delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function renderRegistrosGrid() {
+  const all = await getAllRegistros();
+  const countByMilestone = {};
+  const coverByMilestone = {};
+  all.forEach(r => {
+    countByMilestone[r.milestoneId] = (countByMilestone[r.milestoneId] || 0) + 1;
+    if (!coverByMilestone[r.milestoneId]) coverByMilestone[r.milestoneId] = r.dataUrl;
+  });
+
+  const grid = document.getElementById('registros-grid');
+  grid.innerHTML = MILESTONES.map(m => {
+    const count = countByMilestone[m.id] || 0;
+    const cover = coverByMilestone[m.id];
+    return `
+      <div class="milestone-card" data-id="${m.id}" style="background:#fff;border-radius:var(--radius);overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="aspect-ratio:1;background:var(--cream);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+          ${cover
+            ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" loading="lazy" /><div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);"></div>`
+            : ''}
+          <span style="font-size:32px;position:relative;z-index:1;${cover?'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));':''}">${m.emoji}</span>
+        </div>
+        <div style="padding:8px 10px 10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.2;">${m.title}</div>
+          <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${count > 0 ? count + ' foto' + (count>1?'s':'') : 'Sin fotos aún'}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.milestone-card').forEach(card => {
+    card.addEventListener('click', () => openMilestoneDetail(card.dataset.id));
+  });
+}
+
+async function openMilestoneDetail(milestoneId) {
+  currentMilestoneId = milestoneId;
+  const m = MILESTONES.find(x => x.id === milestoneId);
+  document.getElementById('detail-emoji').textContent = m.emoji;
+  document.getElementById('detail-title').textContent = m.title;
+  document.getElementById('detail-desc').textContent = m.desc;
+  document.getElementById('registros-grid-view').style.display = 'none';
+  document.getElementById('registros-detail-view').style.display = 'block';
+  document.getElementById('reg-caption-card').style.display = 'none';
+  pendingRegPhotoData = null;
+  await renderDetailGrid();
+}
+
+async function renderDetailGrid() {
+  const fotos = await getRegistrosByMilestone(currentMilestoneId);
+  const el = document.getElementById('reg-detail-grid');
+  if (!fotos.length) {
+    el.innerHTML = '<p class="empty-note" style="text-align:center;padding:20px 0;">Todavía sin fotos en este capítulo.<br>¡Agregá la primera!</p>';
+    return;
+  }
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+    ${[...fotos].reverse().map(f => `
+      <div class="foto-thumb" data-id="${f.id}" data-store="registros" style="position:relative;aspect-ratio:1;overflow:hidden;border-radius:8px;cursor:pointer;">
+        <img src="${f.dataUrl}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+        ${f.caption ? `<div style="position:absolute;bottom:0;left:0;right:0;padding:3px 5px;background:linear-gradient(transparent,rgba(0,0,0,0.55));color:#fff;font-size:9px;line-height:1.3;">${f.caption}</div>` : ''}
+      </div>`).join('')}
+  </div>`;
+
+  el.querySelectorAll('.foto-thumb').forEach(thumb => {
+    thumb.addEventListener('click', () => {
+      const id = parseInt(thumb.dataset.id);
+      const foto = fotos.find(f => f.id === id);
+      if (!foto) return;
+      openModalStore = 'registros';
+      openModalId = id;
+      document.getElementById('modal-img').src = foto.dataUrl;
+      document.getElementById('modal-caption').textContent = foto.caption || '';
+      document.getElementById('modal-date').textContent = new Date(foto.fecha).toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      document.getElementById('foto-modal').style.display = 'flex';
+    });
+  });
+}
+
+function setupRegistros() {
+  // back button
+  document.getElementById('btn-registros-back').addEventListener('click', () => {
+    document.getElementById('registros-detail-view').style.display = 'none';
+    document.getElementById('registros-grid-view').style.display = 'block';
+    currentMilestoneId = null;
+    renderRegistrosGrid();
+  });
+
+  // cámara y galería del detalle
+  async function handleRegFile(file) {
+    if (!file) return;
+    const dataUrl = await fileToDataUrl(file);
+    pendingRegPhotoData = dataUrl;
+    document.getElementById('reg-preview').src = dataUrl;
+    document.getElementById('reg-caption').value = '';
+    document.getElementById('reg-caption-card').style.display = 'block';
+    document.getElementById('reg-caption-card').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  document.getElementById('reg-input-camera').addEventListener('change', e => handleRegFile(e.target.files[0]));
+  document.getElementById('reg-input-gallery').addEventListener('change', async e => {
+    const files = Array.from(e.target.files);
+    if (files.length === 1) {
+      handleRegFile(files[0]);
+    } else {
+      for (const f of files) {
+        const dataUrl = await fileToDataUrl(f);
+        await saveRegistroPhoto(currentMilestoneId, dataUrl, '');
+      }
+      showToast(`${files.length} fotos guardadas ✅`);
+      renderDetailGrid();
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('btn-reg-save').addEventListener('click', async () => {
+    if (!pendingRegPhotoData || !currentMilestoneId) return;
+    const caption = document.getElementById('reg-caption').value.trim();
+    await saveRegistroPhoto(currentMilestoneId, pendingRegPhotoData, caption);
+    pendingRegPhotoData = null;
+    document.getElementById('reg-caption-card').style.display = 'none';
+    document.getElementById('reg-input-camera').value = '';
+    document.getElementById('reg-input-gallery').value = '';
+    showToast('Foto guardada en el álbum ✅');
+    renderDetailGrid();
+  });
+
+  document.getElementById('btn-reg-cancel').addEventListener('click', () => {
+    pendingRegPhotoData = null;
+    document.getElementById('reg-caption-card').style.display = 'none';
+    document.getElementById('reg-input-camera').value = '';
+    document.getElementById('reg-input-gallery').value = '';
+  });
+
+  // override modal delete para manejar ambas stores
+  document.getElementById('btn-modal-delete').addEventListener('click', async () => {
+    if (openModalId === null) return;
+    if (openModalStore === 'registros') {
+      await deleteRegistroPhoto(openModalId);
+      document.getElementById('foto-modal').style.display = 'none';
+      openModalId = null;
+      showToast('Foto eliminada');
+      renderDetailGrid();
+      renderRegistrosGrid();
+    }
+  }, true);
+
+  renderRegistrosGrid();
+}

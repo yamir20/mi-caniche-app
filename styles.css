@@ -423,3 +423,12 @@ nav.tabbar button svg { width: 22px; height: 22px; }
 .vax-row:last-child { border-bottom: none; }
 .vax-done { opacity: 0.55; }
 .vax-late { background: #fff5f3; border-radius: 8px; padding: 10px 8px; margin-bottom: 4px; }
+
+/* ===== FOTOS ===== */
+.foto-thumb img { transition: transform 0.2s; }
+.foto-thumb:active img { transform: scale(0.97); }
+#foto-modal { display: none; }
+
+/* ===== MILESTONE CARDS ===== */
+.milestone-card { transition: transform 0.15s; }
+.milestone-card:active { transform: scale(0.97); }

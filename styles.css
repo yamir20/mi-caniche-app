@@ -414,3 +414,12 @@ nav.tabbar button svg { width: 22px; height: 22px; }
 .week-bar.empty { background: var(--cream-deep); }
 .week-bar-label { font-size: 10px; color: var(--ink-soft); }
 .week-bar-pct { font-size: 10px; font-weight: 600; color: var(--brown-dark); }
+
+/* ===== VACCINE CALENDAR ===== */
+.vax-row {
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--cream-deep);
+}
+.vax-row:last-child { border-bottom: none; }
+.vax-done { opacity: 0.55; }
+.vax-late { background: #fff5f3; border-radius: 8px; padding: 10px 8px; margin-bottom: 4px; }

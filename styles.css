@@ -268,3 +268,149 @@ nav.tabbar button svg { width: 22px; height: 22px; }
 }
 
 .toast.show { opacity: 1; }
+
+/* ===== SUBTABS ===== */
+.subtabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 0 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.subtabs::-webkit-scrollbar { display: none; }
+.subtab {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 100px;
+  border: 1px solid var(--cream-deep);
+  background: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.subtab.active {
+  background: var(--brown);
+  color: #fff;
+  border-color: var(--brown);
+  font-weight: 600;
+}
+.subview { display: none; }
+.subview.active { display: block; }
+
+/* ===== PILL BUTTONS ===== */
+.pill-btn {
+  padding: 6px 13px;
+  border-radius: 100px;
+  border: 1.5px solid var(--cream-deep);
+  background: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink);
+}
+.pill-btn.active {
+  background: var(--brown);
+  color: #fff;
+  border-color: var(--brown);
+  font-weight: 600;
+}
+
+/* ===== PIS BUTTONS ===== */
+.btn-pis {
+  border: none;
+  border-radius: var(--radius);
+  padding: 14px 8px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+.btn-pis span { font-size: 11px; font-weight: 400; display: block; }
+.btn-pis.success { background: #E2EBDD; color: #2D6020; }
+.btn-pis.warning { background: #FFF3CD; color: #7A5C00; }
+.btn-pis.danger  { background: #FDECEA; color: #B8543A; }
+.btn-pis.info    { background: #E8F0FE; color: #2955A8; }
+
+/* ===== RESULTADO BUTTONS ===== */
+.resultado-btn {
+  border: 1.5px solid var(--cream-deep);
+  border-radius: var(--radius);
+  padding: 10px 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+  line-height: 1.5;
+  text-align: center;
+}
+.resultado-btn.active {
+  border-color: var(--brown);
+  background: var(--cream);
+  font-weight: 600;
+}
+
+/* ===== SMALL BUTTON ===== */
+.btn-small {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--cream-deep);
+  background: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink-soft);
+}
+
+/* ===== PROGRESS BAR ===== */
+.prog-bar-wrap {
+  background: var(--cream-deep);
+  border-radius: 100px;
+  height: 10px;
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+.prog-bar-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: var(--sage);
+  transition: width 0.4s;
+}
+.prog-bar-fill.danger { background: var(--danger); }
+.prog-bar-fill.warn   { background: #D4A017; }
+
+/* ===== LOG ENTRY ===== */
+.log-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--cream-deep);
+  font-size: 14px;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-entry .time { font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+.log-entry .badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.badge.ok   { background: #E2EBDD; color: #2D6020; }
+.badge.warn { background: #FFF3CD; color: #7A5C00; }
+.badge.bad  { background: #FDECEA; color: #B8543A; }
+.badge.info { background: #E8F0FE; color: #2955A8; }
+
+/* ===== SEMANA CHART ===== */
+.week-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+  margin-bottom: 8px;
+}
+.week-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.week-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; background: var(--sage); }
+.week-bar.empty { background: var(--cream-deep); }
+.week-bar-label { font-size: 10px; color: var(--ink-soft); }
+.week-bar-pct { font-size: 10px; font-weight: 600; color: var(--brown-dark); }

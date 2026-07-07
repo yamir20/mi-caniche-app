@@ -606,8 +606,147 @@ function renderProgresoCharts() {
 }
 
 // ============================================================
-// ALIMENTACIÓN
+// CALENDARIO DE VACUNAS
 // ============================================================
+const VACCINE_SCHEDULE = [
+  { id: 'v1',  diasDesdeNac: 45,  label: 'Vacuna óctuple / sextuple',     tipo: 'vacuna',        nota: '1ra dosis — primera vacuna de la vida' },
+  { id: 'd1',  diasDesdeNac: 45,  label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: '1ra dosis — hacerla junto con la primera vacuna' },
+  { id: 'v2',  diasDesdeNac: 65,  label: 'Vacuna óctuple / sextuple',     tipo: 'vacuna',        nota: '2da dosis — refuerzo obligatorio' },
+  { id: 'd2',  diasDesdeNac: 75,  label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: '2da dosis' },
+  { id: 'de1', diasDesdeNac: 45,  label: 'Desparasitación externa',        tipo: 'externo',       nota: 'Antipulgas/garrapatas — mensual hasta los 6 meses' },
+  { id: 'v3',  diasDesdeNac: 85,  label: 'Vacuna óctuple / sextuple',     tipo: 'vacuna',        nota: '3ra dosis — completa la serie inicial' },
+  { id: 'd3',  diasDesdeNac: 105, label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: '3ra dosis' },
+  { id: 'de2', diasDesdeNac: 75,  label: 'Desparasitación externa',        tipo: 'externo',       nota: '2do mes — antipulgas/garrapatas' },
+  { id: 'r1',  diasDesdeNac: 90,  label: 'Vacuna antirrábica',             tipo: 'vacuna',        nota: '1ra dosis — obligatoria desde los 3 meses' },
+  { id: 'de3', diasDesdeNac: 105, label: 'Desparasitación externa',        tipo: 'externo',       nota: '3er mes' },
+  { id: 'd4',  diasDesdeNac: 135, label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: '4ta dosis' },
+  { id: 'de4', diasDesdeNac: 135, label: 'Desparasitación externa',        tipo: 'externo',       nota: '4to mes' },
+  { id: 'de5', diasDesdeNac: 165, label: 'Desparasitación externa',        tipo: 'externo',       nota: '5to mes' },
+  { id: 'd5',  diasDesdeNac: 165, label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: '5ta dosis' },
+  { id: 'de6', diasDesdeNac: 195, label: 'Desparasitación externa',        tipo: 'externo',       nota: '6to mes — fin de la etapa mensual' },
+  { id: 'va1', diasDesdeNac: 365, label: 'Refuerzo anual de vacunas',      tipo: 'vacuna',        nota: 'Repetir todos los años de por vida' },
+  { id: 'da1', diasDesdeNac: 270, label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: 'Cada 3 meses de por vida' },
+  { id: 'da2', diasDesdeNac: 365, label: 'Desparasitación interna',        tipo: 'desparasitacion', nota: 'Cada 3 meses de por vida' },
+];
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function diffDays(date) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(date); d.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+
+function renderVaccineCalendar() {
+  const birthDate = document.getElementById('birth-date').value;
+  const calEl = document.getElementById('vaccine-calendar');
+  const nextCard = document.getElementById('next-vaccine-card');
+  const nextInfo = document.getElementById('next-vaccine-info');
+
+  if (!birthDate) {
+    calEl.innerHTML = '<p class="empty-note">Ingresá la fecha de nacimiento arriba para ver el calendario.</p>';
+    nextCard.style.display = 'none';
+    return;
+  }
+
+  const done = store.get('vaccine-done', {});
+  const items = VACCINE_SCHEDULE.map(v => ({
+    ...v,
+    date: addDays(birthDate, v.diasDesdeNac),
+    done: !!done[v.id]
+  })).sort((a,b) => a.date - b.date);
+
+  // próxima vacuna pendiente
+  const upcoming = items.filter(v => !v.done && diffDays(v.date) >= 0);
+  if (upcoming.length) {
+    const next = upcoming[0];
+    const diff = diffDays(next.date);
+    nextCard.style.display = 'block';
+    nextInfo.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:16px;font-weight:700;">${next.label}</div>
+          <div style="font-size:13px;color:var(--ink-soft);margin-top:2px;">${formatDate(next.date)}</div>
+        </div>
+        <span class="pill ${diff<=7?'warn':'ok'}" style="margin-left:auto;">
+          ${diff===0?'¡HOY!':diff===1?'mañana':'en '+diff+' días'}
+        </span>
+      </div>
+    `;
+  } else {
+    nextCard.style.display = 'none';
+  }
+
+  const tipoIcon = { vacuna:'💉', desparasitacion:'💊', externo:'🐾' };
+  const tipoLabel = { vacuna:'Vacuna', desparasitacion:'Desparasitación interna', externo:'Desparasitación externa' };
+  const tipoCls = { vacuna:'ok', desparasitacion:'info', externo:'warn' };
+
+  calEl.innerHTML = items.map(v => {
+    const diff = diffDays(v.date);
+    const isPast = diff < 0;
+    const isToday = diff === 0;
+    const isSoon = diff > 0 && diff <= 7;
+    let statusBadge = '';
+    if (v.done) statusBadge = '<span class="badge ok">✓ Aplicada</span>';
+    else if (isToday) statusBadge = '<span class="badge warn">¡Hoy!</span>';
+    else if (isPast) statusBadge = '<span class="badge bad">Vencida</span>';
+    else if (isSoon) statusBadge = '<span class="badge warn">Pronto</span>';
+
+    return `
+      <div class="vax-row ${v.done?'vax-done':isPast&&!v.done?'vax-late':''}" data-id="${v.id}">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span style="font-size:20px;margin-top:2px;">${tipoIcon[v.tipo]}</span>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-weight:600;font-size:14px;">${v.label}</span>
+              <span class="badge ${tipoCls[v.tipo]}" style="font-size:10px;">${tipoLabel[v.tipo]}</span>
+            </div>
+            <div style="font-size:12px;color:var(--ink-soft);margin:2px 0;">${formatDate(v.date)}</div>
+            <div style="font-size:12px;color:var(--ink-soft);">${v.nota}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            ${statusBadge}
+            <button class="btn-vax-toggle btn-small" data-id="${v.id}" style="font-size:11px;">
+              ${v.done?'Desmarcar':'Marcar ✓'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // eventos botones
+  calEl.querySelectorAll('.btn-vax-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const done = store.get('vaccine-done', {});
+      done[id] = !done[id];
+      store.set('vaccine-done', done);
+      renderVaccineCalendar();
+      showToast(done[id] ? 'Vacuna marcada como aplicada ✓' : 'Vacuna desmarcada');
+    });
+  });
+}
+
+function setupVaccineCalendar() {
+  const input = document.getElementById('birth-date');
+  input.value = store.get('birth-date', '');
+  input.addEventListener('change', e => {
+    store.set('birth-date', e.target.value);
+    renderVaccineCalendar();
+  });
+  renderVaccineCalendar();
+}
+
+
 function renderFeedLog() {
   const log = store.get('feed-log-' + today(), []);
   const el = document.getElementById('feed-log');
@@ -635,10 +774,10 @@ function init() {
   renderChecklist('list-shopping', SHOPPING, 'shopping-checked', 'stat-shopping');
   renderChecklist('list-space', SPACE, 'space-checked', null);
 
-  // tables
-  renderTable('feeding-table', FEEDING, true);
-  renderTable('vaccine-table', VACCINES, false);
+  // salud
+  setupVaccineCalendar();
   renderTable('routine-table', ROUTINE_BASE, false);
+  renderTable('feeding-table', FEEDING, true);
   renderTable('housetraining-table', HOUSETRAINING, false);
   renderTable('potty-schedule-table', POTTY_SCHEDULE, false);
   renderTable('play-table', PLAY, false);

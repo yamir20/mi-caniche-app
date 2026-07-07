@@ -4,8 +4,8 @@
   "description": "Preparación, alimentación, salud y automatización para tu caniche toy",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#F4E9DC",
-  "theme_color": "#6B4F3B",
+  "background_color": "#FEF0F5",
+  "theme_color": "#C2607A",
   "orientation": "portrait",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
